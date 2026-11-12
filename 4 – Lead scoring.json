@@ -1,0 +1,883 @@
+{
+  "name": "4 – Lead scoring",
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7e323918-4c21-474a-b3e6-18cdd39454d4",
+              "name": "email",
+              "value": "={{ String($json['Work email'] || '').trim().toLowerCase() }}",
+              "type": "string"
+            },
+            {
+              "id": "ebc11499-6de3-4447-b587-ed97fae09dd9",
+              "name": "first_name",
+              "value": "={{ String($json['First name'] || '').trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "98261aa2-1fb5-49ee-a0b8-ceaf15ea7cbb",
+              "name": "job_title",
+              "value": "={{ $json['Job title'] }}",
+              "type": "string"
+            },
+            {
+              "id": "512d2be7-97aa-4634-bd8e-c9a03a67d593",
+              "name": "need",
+              "value": "={{ $json['What would you like to automate?'] }}",
+              "type": "string"
+            },
+            {
+              "id": "6574f85a-9d12-4a10-ae64-8e16a8d5226c",
+              "name": "language",
+              "value": "={{ $json['Preferred language'] }}",
+              "type": "string"
+            },
+            {
+              "id": "6aeb5e04-215f-48e2-ba1e-27ca8843e298",
+              "name": "consent",
+              "value": "={{ ($json['Consent'] || []).length > 0 }}",
+              "type": "string"
+            },
+            {
+              "id": "434dadee-9a18-46f8-ad0d-48f49a1c0f27",
+              "name": "domain",
+              "value": "={{ (() => {\n  const free = ['gmail.com','googlemail.com','outlook.com','hotmail.com','live.com','yahoo.com','icloud.com','libero.it','proton.me','protonmail.com'];\n  const site = String($json['Company website'] || '').trim().toLowerCase()\n                 .replace(/^https?:\\/\\//, '').replace(/^www\\./, '').split('/')[0];\n  const emailDomain = (String($json['Work email'] || '').split('@')[1] || '').toLowerCase();\n  return site || (free.includes(emailDomain) ? '' : emailDomain);\n})() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        224,
+        0
+      ],
+      "id": "2e114c1a-2a91-454f-a62c-3d6f39020aae",
+      "name": "Prepare lead"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "943cacc5-1199-42ec-9ed7-b2285b91492f",
+              "leftValue": "={{ $json.domain }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        448,
+        0
+      ],
+      "id": "a0fe978c-b648-49e7-8ce3-f9d70d329d2e",
+      "name": "Has website?"
+    },
+    {
+      "parameters": {
+        "url": "=https://{{ $json.domain }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          },
+          "timeout": 10000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        720,
+        -16
+      ],
+      "id": "7ff6680e-71f7-4993-9160-22a9d7a23a7d",
+      "name": "Fetch website",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        1152,
+        160
+      ],
+      "id": "cbc3874d-3917-4667-9cd0-c580f23b3e6e",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "fOvcobDsYNTsM5ii",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "Text",
+              "cssSelector": "body",
+              "skipSelectors": "script, style, noscript, svg, nav, header, footer"
+            }
+          ]
+        },
+        "options": {
+          "cleanUpText": true
+        }
+      },
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        864,
+        -16
+      ],
+      "id": "8ac8ff8b-aac0-42e6-8b22-86fe216ce6d6",
+      "name": "Extract text",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "text": "=Job title: {{ $('Prepare lead').item.json.job_title }}\nWhat they want to automate: {{ $('Prepare lead').item.json.need }}\nCompany domain: {{ $('Prepare lead').item.json.domain || 'none (personal email address)' }}\n\nCompany website text:\n{{ String($json.text || 'not available').slice(0, 6000) }}",
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"industry\":        { \"type\": \"string\", \"enum\": [\"saas\",\"agency\",\"ecommerce\",\"finance\",\"other\",\"unknown\"], \"description\": \"Main industry. unknown if there is no website text.\" },\n    \"company_size\":    { \"type\": \"string\", \"enum\": [\"1-10\",\"11-50\",\"51-200\",\"201-1000\",\"1000+\",\"unknown\"], \"description\": \"Estimated employees, based on the website.\" },\n    \"seniority\":       { \"type\": \"string\", \"enum\": [\"executive\",\"manager\",\"individual\",\"student\",\"unknown\"], \"description\": \"From the job title.\" },\n    \"segment\":         { \"type\": \"string\", \"enum\": [\"marketer\",\"developer\",\"ops\"], \"description\": \"Closest role family, from the job title.\" },\n    \"intent\":          { \"type\": \"string\", \"enum\": [\"high\",\"medium\",\"low\"], \"description\": \"high = specific use case or urgency; medium = general interest; low = vague.\" },\n    \"company_summary\": { \"type\": \"string\", \"description\": \"One sentence on what the company does. Empty if unknown.\" }\n  },\n  \"required\": [\"industry\",\"company_size\",\"seniority\",\"segment\",\"intent\",\"company_summary\"]\n}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "typeVersion": 1.2,
+      "position": [
+        1152,
+        16
+      ],
+      "id": "1ef08b0a-ec47-4062-a5c2-6076b4cd023f",
+      "name": "Enrich lead"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1VdDjWZXnimhrZ9_bbhef0LCOG8xI57jA-SrgOjcKGOE",
+          "mode": "list",
+          "cachedResultName": "n8n",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1VdDjWZXnimhrZ9_bbhef0LCOG8xI57jA-SrgOjcKGOE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1060309489,
+          "mode": "list",
+          "cachedResultName": "test_contacts",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1VdDjWZXnimhrZ9_bbhef0LCOG8xI57jA-SrgOjcKGOE/edit#gid=1060309489"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "email",
+              "lookupValue": "={{ $('Prepare lead').first().json.email }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1456,
+        16
+      ],
+      "id": "19f4c129-d44e-4570-82c9-06822d7e5ed4",
+      "name": "Find contact",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "IKQ2URGev2DA2f2P",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ---------- Scoring model: edit points and thresholds here ----------\nconst POINTS = {\n  industry:     { saas: 20, agency: 15, ecommerce: 10, finance: 10, other: 5 },\n  company_size: { '51-200': 15, '201-1000': 15, '11-50': 10, '1000+': 10, '1-10': 5 },\n  seniority:    { manager: 15, executive: 12, individual: 8 },\n  intent:       { high: 10, medium: 5 },\n};\nconst GRADE_A = 45;\nconst GRADE_B = 25;\nconst STAGES = ['lead', 'mql', 'customer'];   // lifecycle only moves forward\n\n// ---------- Inputs (one lead per run) ----------\nconst lead = $('Prepare lead').first().json;\nconst ai = $('Enrich lead').first().json.output;\nconst existing = $input.first().json;          // empty {} when the contact is new\n\n// ---------- Score ----------\nconst breakdown = {};\nfor (const key of Object.keys(POINTS)) breakdown[key] = POINTS[key][ai[key]] ?? 0;\nconst fit_score = Object.values(breakdown).reduce((sum, p) => sum + p, 0);\nconst grade = fit_score >= GRADE_A ? 'A' : fit_score >= GRADE_B ? 'B' : 'C';\n\n// ---------- Lifecycle: keep whichever stage is further along ----------\nconst isCustomer = String(existing.is_customer).toUpperCase() === 'TRUE';\nconst currentStage = isCustomer ? 'customer' : String(existing.lifecycle_stage || 'lead').toLowerCase();\nconst scoredStage = grade === 'A' ? 'mql' : 'lead';\nconst lifecycle_stage = STAGES[Math.max(STAGES.indexOf(currentStage), STAGES.indexOf(scoredStage))];\n\n// ---------- Consent: the form can grant it, never revoke it (unsubscribes do that) ----------\nconst optedIn = lead.consent === true || String(existing.opted_in).toUpperCase() === 'TRUE';\n\nreturn [{ json: {\n  email: lead.email,\n  first_name: lead.first_name,\n  language: lead.language,\n  segment: ai.segment,\n  lifecycle_stage,\n  is_customer: isCustomer ? 'TRUE' : 'FALSE',\n  opted_in: optedIn ? 'TRUE' : 'FALSE',\n  company: lead.domain,\n  industry: ai.industry,\n  company_size: ai.company_size,\n  seniority: ai.seniority,\n  intent: ai.intent,\n  company_summary: ai.company_summary,\n  fit_score,\n  score_breakdown: Object.entries(breakdown).map(([k, v]) => `${k} ${v}`).join(', '),\n  grade,\n  scored_at: new Date().toISOString(),\n}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1648,
+        16
+      ],
+      "id": "893bed53-e586-4198-9bb9-cecde57d1b0c",
+      "name": "Score lead"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1VdDjWZXnimhrZ9_bbhef0LCOG8xI57jA-SrgOjcKGOE",
+          "mode": "list",
+          "cachedResultName": "n8n",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1VdDjWZXnimhrZ9_bbhef0LCOG8xI57jA-SrgOjcKGOE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1060309489,
+          "mode": "list",
+          "cachedResultName": "test_contacts",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1VdDjWZXnimhrZ9_bbhef0LCOG8xI57jA-SrgOjcKGOE/edit#gid=1060309489"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "email"
+          ],
+          "schema": [
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "first_name",
+              "displayName": "first_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "language",
+              "displayName": "language",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "country",
+              "displayName": "country",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "segment",
+              "displayName": "segment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "lifecycle_stage",
+              "displayName": "lifecycle_stage",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "opted_in",
+              "displayName": "opted_in",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "unsubscribed",
+              "displayName": "unsubscribed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "bounced",
+              "displayName": "bounced",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "last_emailed_at",
+              "displayName": "last_emailed_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "is_customer",
+              "displayName": "is_customer",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status_log",
+              "displayName": "status_log",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "test_note",
+              "displayName": "test_note",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "handlingExtraData": "insertInNewColumn"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1856,
+        16
+      ],
+      "id": "1bae2510-d36f-400a-a52a-d4852119a9b1",
+      "name": "Save lead",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "IKQ2URGev2DA2f2P",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "fa191ce7-9063-4a6c-a765-ab6b008b98a1",
+              "leftValue": "={{ $('Score lead').first().json.opted_in }}",
+              "rightValue": "TRUE",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "13e19de0-cf32-4c5a-bbe8-a7dc11ec7e49",
+              "leftValue": "={{ $('Score lead').first().json.grade }}",
+              "rightValue": "C",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            },
+            {
+              "id": "cb230173-bc05-4404-b7e1-5c7164e7551a",
+              "leftValue": "={{ $('Score lead').first().json.lifecycle_stage }}",
+              "rightValue": "customer",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        2080,
+        16
+      ],
+      "id": "2566d341-a3a1-41e3-a772-9bf7195d2bd5",
+      "name": "Mailable?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://connect.mailerlite.com/api/subscribers",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  email: $('Score lead').first().json.email,\n  fields: { name: $('Score lead').first().json.first_name },\n  groups: [ $('Score lead').first().json.grade === 'A' ? '200775978575725738' : '200775987352306748' ]\n}) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2304,
+        16
+      ],
+      "id": "4bc0eebc-772b-434b-a4b6-508aac329f3c",
+      "name": "Add to MailerLite"
+    },
+    {
+      "parameters": {
+        "sendTo": "your.name@gmail.com",
+        "subject": "=Hot lead: {{ $('Score lead').first().json.first_name }} ({{ $('Score lead').first().json.company || 'no company' }}), score {{ $('Score lead').first().json.fit_score }}",
+        "message": "=<p><b>{{ $('Score lead').first().json.first_name }}</b>, {{ $('Prepare lead').first().json.job_title }}<br> {{ $('Score lead').first().json.email }}</p> <p><b>Company:</b> {{ $('Score lead').first().json.company || 'unknown' }}<br> {{ $('Score lead').first().json.company_summary }}</p> <p><b>Wants to automate:</b> {{ $('Prepare lead').first().json.need }}</p> <p><b>Score:</b> {{ $('Score lead').first().json.fit_score }}/60 ({{ $('Score lead').first().json.score_breakdown }})</p> {{ $('Score lead').first().json.lifecycle_stage === 'customer' ? '<p><b>Existing customer: expansion opportunity.</b></p>' : '' }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2304,
+        416
+      ],
+      "id": "4dad632f-62c8-4425-8af9-f5678463b562",
+      "name": "Alert sales",
+      "webhookId": "4cf9d66c-1ee1-4fae-88ab-4695e70a2474",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "C3cShxPuMm2JmsHs",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "33595f1c-86f7-4d7b-b5d7-f95682243afa",
+              "leftValue": "={{ $('Score lead').first().json.grade }}",
+              "rightValue": "A",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        2080,
+        416
+      ],
+      "id": "6f6c770e-853c-4061-a931-6947d4c8021f",
+      "name": "Hot lead?"
+    },
+    {
+      "parameters": {
+        "content": "## 4 · Lead scoring\nNew lead → AI classifies the company and intent → fixed rules score it → saved to contacts → A/B leads to MailerLite, A leads alert sales. AI judges, rules decide.",
+        "width": 320
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -16,
+        -416
+      ],
+      "id": "aaf4c7f0-c25b-482b-a12f-9148f9c14650",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Capture & clean\nNative form. Edit Fields normalises the data with no Code node. Personal email domains (gmail etc.) are ignored, so a gmail lead isn't enriched as \"Google\".",
+        "width": 336,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -208
+      ],
+      "id": "f4eaabd2-0b8d-494d-8e03-b1dba9dc9df3",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "formTitle": "Talk to Northwind",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "First name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Work email",
+              "fieldType": "email",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Company website",
+              "placeholder": "companyname.com"
+            },
+            {
+              "fieldLabel": "Job title",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Preferred language",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "EN"
+                  },
+                  {
+                    "option": "IT"
+                  },
+                  {
+                    "option": "ES"
+                  },
+                  {
+                    "option": "FR"
+                  },
+                  {
+                    "option": "DE"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "What would you like to automate?",
+              "fieldType": "textarea",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Consent",
+              "fieldType": "checkbox",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "I agree to receive emails from Northwind"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        0,
+        0
+      ],
+      "id": "69f606e5-ca2a-4aad-9936-552040b4cd75",
+      "name": "Lead form",
+      "webhookId": "d7fa7afa-e6d4-4f22-91d2-77a0e62b16f1"
+    },
+    {
+      "parameters": {
+        "content": "## Company website\nFetched only when a company domain exists. The HTML node strips scripts and menus before the AI reads the page: ~10× fewer tokens. Errors continue, so the lead is never lost.",
+        "width": 560,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        416,
+        -208
+      ],
+      "id": "e3f88cfd-2ed7-4738-9746-7c3c7b1e97b5",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## AI classification\nInformation Extractor with fixed allowed values (industry, size, seniority, segment, intent). Temperature 0, so the same input gives the same answer.",
+        "width": 352,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        -208
+      ],
+      "id": "3c9ab4f6-e803-414e-8fee-e277c9225e80",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## Score\nOne editable points table (max 60): A ≥ 45, B ≥ 25. Lifecycle only moves forward (lead → mql → customer). The form can grant consent but never revoke it.",
+        "width": 320,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1456,
+        -208
+      ],
+      "id": "cb8008c2-1cab-4ac0-82e0-181ce0a33fb2",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "## Save\nAppend or Update on email: one record per person, no duplicates. Leads become campaign contacts automatically.",
+        "width": 192,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1840,
+        -208
+      ],
+      "id": "bc8eaf13-7772-438c-9405-544c713516d2",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "content": "## Marketing\nConsent + grade A/B + not a customer. One API call adds them to \"sales ready\" or \"nurture\" depending on grade.",
+        "width": 336,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2080,
+        -208
+      ],
+      "id": "fd1f216d-0a1f-4948-8c22-f09fb299a0cd",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "content": "## Sales alert\nGrade A emails sales with the score breakdown and what they want to automate. Customers are flagged as an expansion opportunity.",
+        "width": 336,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2096,
+        208
+      ],
+      "id": "a876421b-66c2-47a6-8135-d149040ab575",
+      "name": "Sticky Note7"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Prepare lead": {
+      "main": [
+        [
+          {
+            "node": "Has website?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has website?": {
+      "main": [
+        [
+          {
+            "node": "Fetch website",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Enrich lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch website": {
+      "main": [
+        [
+          {
+            "node": "Extract text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Enrich lead",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract text": {
+      "main": [
+        [
+          {
+            "node": "Enrich lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enrich lead": {
+      "main": [
+        [
+          {
+            "node": "Find contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find contact": {
+      "main": [
+        [
+          {
+            "node": "Score lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score lead": {
+      "main": [
+        [
+          {
+            "node": "Save lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save lead": {
+      "main": [
+        [
+          {
+            "node": "Mailable?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Hot lead?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mailable?": {
+      "main": [
+        [
+          {
+            "node": "Add to MailerLite",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hot lead?": {
+      "main": [
+        [
+          {
+            "node": "Alert sales",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lead form": {
+      "main": [
+        [
+          {
+            "node": "Prepare lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "98514226-2cef-46ce-a6ed-9c2f3f3c8489",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d2139c3f747a12fe63f569a9ffe9eb75ad49e1106d5f404d82c1f4b6baf23c91"
+  },
+  "nodeGroups": [],
+  "id": "O1KhBir47KmshrWX",
+  "tags": []
+}

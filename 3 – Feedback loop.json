@@ -1,0 +1,296 @@
+{
+  "name": "3 – Feedback loop",
+  "nodes": [
+    {
+      "parameters": {
+        "events": [
+          "subscriber.unsubscribed",
+          "subscriber.bounced",
+          "subscriber.spam_reported"
+        ]
+      },
+      "type": "n8n-nodes-base.mailerLiteTrigger",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "7d355698-4764-42bf-ba82-60ee431a5f5e",
+      "name": "MailerLite Trigger",
+      "webhookId": "e6e5b42f-936d-46cd-8e2f-d6e4b04ce125",
+      "credentials": {
+        "mailerLiteApi": {
+          "id": "aGBJ9EYfDFgP7mlC",
+          "name": "Mailer Lite account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(i => {\n  const j = i.json;\n  const sub = j.data ?? j.subscriber ?? j;\n  const email = String(sub.email || '').trim().toLowerCase();\n  const status = String(sub.status || '').toLowerCase();\n  const event = String(j.type || j.event || '').toLowerCase();\n  const today = new Date().toISOString().slice(0, 10);\n\n  const row = { email };\n  if (status === 'bounced' || event.includes('bounce')) {\n    row.bounced = 'TRUE';\n    row.status_log = `bounced (MailerLite) ${today}`;\n  } else if (status === 'junk' || event.includes('spam')) {\n    row.unsubscribed = 'TRUE';\n    row.status_log = `spam complaint (MailerLite) ${today}`;\n  } else {\n    row.unsubscribed = 'TRUE';\n    row.status_log = `unsubscribed (MailerLite) ${today}`;\n  }\n  return { json: row };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ],
+      "id": "57435154-2671-4072-9ed9-ac036da6e6b4",
+      "name": "Normalize event"
+    },
+    {
+      "parameters": {
+        "content": "## 3 · Feedback loop\nMailerLite reports unsubscribes, bounces and spam complaints. The contact sheet updates instantly, so the next campaign excludes them automatically."
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -48,
+        -384
+      ],
+      "id": "9d5fc761-0faa-4fd4-b39a-fa4fcc816671",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Events in\nEvent type is read from the subscriber's status (unsubscribed / bounced / junk). A spam complaint counts as an unsubscribe.",
+        "width": 400,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -48,
+        -192
+      ],
+      "id": "78f4e7cc-e55b-4461-954a-17e35aa4318d",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1VdDjWZXnimhrZ9_bbhef0LCOG8xI57jA-SrgOjcKGOE",
+          "mode": "list",
+          "cachedResultName": "n8n",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1VdDjWZXnimhrZ9_bbhef0LCOG8xI57jA-SrgOjcKGOE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1060309489,
+          "mode": "list",
+          "cachedResultName": "test_contacts",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1VdDjWZXnimhrZ9_bbhef0LCOG8xI57jA-SrgOjcKGOE/edit#gid=1060309489"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "email"
+          ],
+          "schema": [
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "first_name",
+              "displayName": "first_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "language",
+              "displayName": "language",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "country",
+              "displayName": "country",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "segment",
+              "displayName": "segment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "lifecycle_stage",
+              "displayName": "lifecycle_stage",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "opted_in",
+              "displayName": "opted_in",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "unsubscribed",
+              "displayName": "unsubscribed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "bounced",
+              "displayName": "bounced",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "last_emailed_at",
+              "displayName": "last_emailed_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "is_customer",
+              "displayName": "is_customer",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status_log",
+              "displayName": "status_log",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "test_note",
+              "displayName": "test_note",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        448,
+        0
+      ],
+      "id": "d62d09e6-4d4a-4154-aad5-e36fd8b17786",
+      "name": "Update contact",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "IKQ2URGev2DA2f2P",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Update contact\nOnly the changed column is written, so nothing else on the contact is overwritten.",
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        384,
+        -192
+      ],
+      "id": "c77bc8ca-749f-4567-97d8-3b7617866f16",
+      "name": "Sticky Note2"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "MailerLite Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize event": {
+      "main": [
+        [
+          {
+            "node": "Update contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "c5d45c91-bde4-4832-a29d-12e7cf2fa362",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d2139c3f747a12fe63f569a9ffe9eb75ad49e1106d5f404d82c1f4b6baf23c91"
+  },
+  "nodeGroups": [],
+  "id": "HJ8q2J8asmpQxceA",
+  "tags": []
+}

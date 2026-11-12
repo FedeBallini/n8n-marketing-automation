@@ -1,0 +1,1286 @@
+{
+  "name": "1 – Content generation",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "New email campaign brief",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Goal",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Announce a new feature"
+                  },
+                  {
+                    "option": "Invite to an event"
+                  },
+                  {
+                    "option": "Share content"
+                  },
+                  {
+                    "option": "Re-engage inactive contacts"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "Topic",
+              "fieldType": "textarea",
+              "placeholder": "What is this email about?"
+            },
+            {
+              "fieldLabel": "Key points",
+              "fieldType": "textarea",
+              "placeholder": "2–4 facts the email must mention"
+            },
+            {
+              "fieldLabel": "CTA URL"
+            },
+            {
+              "fieldLabel": "Target lifecycle stages",
+              "fieldType": "checkbox",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "lead"
+                  },
+                  {
+                    "option": "mql"
+                  },
+                  {
+                    "option": "customer"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        -464,
+        0
+      ],
+      "id": "033f2345-70b1-41bf-88a4-c278fd824232",
+      "name": "On form submission",
+      "webhookId": "51e0d362-6b47-4144-aae8-2939d3ac2208"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2725cb57-f963-4e10-8e9c-4183527efc47",
+              "name": "campaign_id",
+              "value": "={{ $now.toFormat('yyyyMMdd-HHmm') }}",
+              "type": "string"
+            },
+            {
+              "id": "506291c4-4aa8-4049-8b50-b3654bbccd95",
+              "name": "campaign_name",
+              "value": "={{ $json['Campaign name'] }}",
+              "type": "string"
+            },
+            {
+              "id": "96c2bdb9-4d08-455d-bfbb-375f2d6e0a4f",
+              "name": "goal",
+              "value": "={{ $json['Goal'] }}",
+              "type": "string"
+            },
+            {
+              "id": "2241c764-3cf9-4c07-ac4a-1edd755580f6",
+              "name": "topic",
+              "value": "={{ $json['Topic'] }}",
+              "type": "string"
+            },
+            {
+              "id": "70b3ef57-958f-4dc2-ab7f-7a716a3917eb",
+              "name": "key_points",
+              "value": "={{ $json['Key points'] }}",
+              "type": "string"
+            },
+            {
+              "id": "7244e4d5-6286-4a84-8a2d-e1ad2836ca34",
+              "name": "=cta_url",
+              "value": "={{ $json['CTA URL'] }}",
+              "type": "string"
+            },
+            {
+              "id": "abea0bf7-323e-4a13-8c69-f33a9b1b49e1",
+              "name": "target_stages",
+              "value": "={{ $json['Target lifecycle stages'] }}",
+              "type": "array"
+            },
+            {
+              "id": "78720ab6-788d-4b40-b351-a33501021740",
+              "name": "banned_words",
+              "value": "revolutionary, game-changer, game changer, unlock, supercharge, seamless, cutting-edge, synergy, don't miss out, act now",
+              "type": "string"
+            },
+            {
+              "id": "d4365a55-3d4e-4034-87d1-e9716ba9ee6e",
+              "name": "brand_voice",
+              "value": "BRAND: Northwind Automations, a (fictional) workflow automation platform for B2B teams.  PERSONALITY: Practical, confident, a little dry-witted. A senior colleague who has done this before, not a salesperson.  DO - Lead with the reader's problem, not our product - One idea per email - Short sentences. Concrete details taken from the brief - Sound like a person  DON'T - Hype, superlatives or fake urgency (\"last chance\", \"don't miss out\") - Jargon the reader's role wouldn't use - Emoji, exclamation marks, ALL CAPS - Any promise, number or feature that is not in the brief  EXAMPLE OF OUR VOICE \"Most teams don't have an automation problem. They have a 'three people copy the same data into three tools' problem. Here's how to fix that in an afternoon.\"",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -272,
+        0
+      ],
+      "id": "fc4b91fd-4db3-425b-860d-8b96aaeee23b",
+      "name": "Campaign setup"
+    },
+    {
+      "parameters": {
+        "jsCode": "const c = $input.first().json;\n\nconst segments = {\n  marketer:  'Marketing managers. Care about pipeline, campaign results and saving time. Not technical.',\n  developer: 'Developers and technical builders. Care about control, APIs and not being slowed down. Allergic to hype.',\n  ops:       'Operations and RevOps people. Care about reliability, fewer manual steps and clean data.',\n};\n\nconst languages = {\n  en: { name: 'English',                                 address: 'Direct \"you\"' },\n  it: { name: 'Italian',                                 address: 'Informal \"tu\"' },\n};\n\nconst out = [];\nfor (const [segment, segment_description] of Object.entries(segments)) {\n  for (const [language, l] of Object.entries(languages)) {\n    out.push({ json: { ...c, segment, segment_description, language,\n                       language_name: l.name, address_form: l.address } });\n  }\n}\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -48,
+        0
+      ],
+      "id": "ef1c919d-53d3-444b-8e64-01baaee66200",
+      "name": "Build variants"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a senior email copywriter.\n\nBRAND VOICE GUIDE\n{{ $json.brand_voice }}\n\nCAMPAIGN BRIEF\n- Goal: {{ $json.goal }}\n- Topic: {{ $json.topic }}\n- Key points: {{ $json.key_points }}\n\nAUDIENCE\n- Segment: {{ $json.segment }}: {{ $json.segment_description }}\n- Language: {{ $json.language_name }}\n- Form of address: {{ $json.address_form }}\n\nTASK\nWrite one marketing email for this audience. Write it natively in {{ $json.language_name }}. Do not translate from English: use expressions and examples that feel natural to this reader. Angle the message to what this segment cares about.\n\nRULES\n- subject: max 55 characters, no emoji, no exclamation marks\n- headline: max 70 characters\n- body: 60-110 words, plain text, ONE paragraph, no line breaks, no greeting line, no sign-off\n- cta_label: 2-4 words, starts with a verb\n- Never include URLs, prices or claims that are not in the brief\n- Never use these words or their translations: {{ $json.banned_words }}",
+        "hasOutputParser": true,
+        "batching": {
+          "batchSize": 1,
+          "delayBetweenBatches": 10000
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        176,
+        0
+      ],
+      "id": "100b4807-7d27-4cb1-8095-2f3efc5738b3",
+      "name": "Write email",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash-lite",
+        "options": {
+          "temperature": 0.7
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        176,
+        176
+      ],
+      "id": "fada8d42-d419-4042-af75-abd365ef1df3",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "fOvcobDsYNTsM5ii",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"subject\":   { \"type\": \"string\" },\n    \"headline\":  { \"type\": \"string\" },\n    \"body\":      { \"type\": \"string\" },\n    \"cta_label\": { \"type\": \"string\" }\n  },\n  \"required\": [\"subject\", \"headline\", \"body\", \"cta_label\"]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        320,
+        176
+      ],
+      "id": "366970e7-0d8f-44c3-8cd8-803ec9638c65",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "jsCode": "const variants = $('Build variants').all();\n\nreturn $input.all().map((item, i) => {\n  const v = variants[i].json;\n  const copy = item.json.output;\n  const issues = [];\n\n  if (copy.subject.length > 55)  issues.push(`Subject too long (${copy.subject.length} chars)`);\n  if (copy.subject.includes('!')) issues.push('Exclamation mark in subject');\n  if (copy.headline.length > 70) issues.push(`Headline too long (${copy.headline.length} chars)`);\n\n  const words = copy.body.trim().split(/\\s+/).length;\n  if (words < 60 || words > 110) issues.push(`Body is ${words} words (target 60-110)`);\n  if (/https?:\\/\\/|www\\./i.test(copy.body)) issues.push('Body contains a URL');\n\n  const text = `${copy.subject} ${copy.headline} ${copy.body}`.toLowerCase();\n  const found = v.banned_words.split(',').map(w => w.trim().toLowerCase())\n                 .filter(w => w && text.includes(w));\n  if (found.length) issues.push(`Banned words: ${found.join(', ')}`);\n\n  return { json: {\n    campaign_id: v.campaign_id,\n    segment: v.segment,\n    language: v.language,\n    language_name: v.language_name,\n    address_form: v.address_form,\n    segment_description: v.segment_description,\n    subject: copy.subject,\n    headline: copy.headline,\n    body: copy.body,\n    cta_label: copy.cta_label,\n    cta_url: v.cta_url,\n    hard_issues: issues,\n  }};\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        496,
+        0
+      ],
+      "id": "b4a5c0d0-6410-4554-9684-f6d0c355743e",
+      "name": "Combine + checks"
+    },
+    {
+      "parameters": {
+        "content": "## Brief & brand rules\nThe form collects the brief. Brand voice, banned words and the CTA URL live here, so the AI never invents a link.",
+        "height": 176,
+        "width": 342,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -480,
+        -240
+      ],
+      "id": "5542e1d3-c93d-4ad4-a2bb-ab6f9335e348",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Segments × languages\nOne item per segment and language, each with its own form of address (tu / du / vous).",
+        "height": 176,
+        "width": 214,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -96,
+        -240
+      ],
+      "id": "0be20d5a-0b02-466a-89e3-36532f781c3e",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Brief & brand rules\nThe form collects the brief. Brand voice, banned words and the CTA URL live here, so the AI never invents a link.",
+        "height": 176,
+        "width": 246,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        160,
+        -240
+      ],
+      "id": "1f1820bf-46f1-4af7-b08f-1d70e6e20315",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## Code checks first\nLength, URLs and banned words are checked by code: cheaper and more reliable than asking an AI.",
+        "height": 176,
+        "width": 230,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        432,
+        -240
+      ],
+      "id": "eee9af9d-f7a0-45e1-a52c-18664a391237",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash-lite",
+        "options": {
+          "temperature": 1
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        656,
+        176
+      ],
+      "id": "7eab2514-ca26-490e-8e13-00070ae31573",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "fOvcobDsYNTsM5ii",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"pass\":   { \"type\": \"boolean\" },\n    \"score\":  { \"type\": \"integer\" },\n    \"issues\": { \"type\": \"array\", \"items\": { \"type\": \"string\" } }\n  },\n  \"required\": [\"pass\", \"score\", \"issues\"]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        800,
+        176
+      ],
+      "id": "79f94603-430b-43ca-a583-2511cb704e02",
+      "name": "Structured Output Parser1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a strict email marketing editor and a native speaker of {{ $json.language_name }}.\n\nBRAND VOICE GUIDE\n{{ $('Campaign setup').first().json.brand_voice }}\n\nBRIEF\n- Topic: {{ $('Campaign setup').first().json.topic }}\n- Key points: {{ $('Campaign setup').first().json.key_points }}\n\nAUDIENCE\n- Segment: {{ $json.segment }}: {{ $json.segment_description }}\n- Language: {{ $json.language_name }}, form of address: {{ $json.address_form }}\n\nEMAIL\nSubject: {{ $json.subject }}\nHeadline: {{ $json.headline }}\nBody: {{ $json.body }}\nCTA: {{ $json.cta_label }}\n\nCHECK\n1. Does it sound native and natural in {{ $json.language_name }}, with the right form of address and no grammar errors?\n2. Does it follow the brand voice (no hype, no fake urgency, no emoji)?\n3. Does it contain any claim, number or feature that is NOT in the brief?\n4. Is it angled to what this segment cares about?\n5. Does it use any of these words, or their translations: {{ $('Campaign setup').first().json.banned_words }}\n\nSet pass to false if any check fails. Score overall quality from 1 to 5. List each problem as one short, specific sentence in English. If there are no problems, return an empty list.",
+        "hasOutputParser": true,
+        "batching": {
+          "batchSize": 1,
+          "delayBetweenBatches": 10000
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        688,
+        0
+      ],
+      "id": "141b9086-ff8f-4c5f-b0a0-24247b2fc4ea",
+      "name": "Review email",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "const drafts = $('Combine + checks').all();\n\nreturn $input.all().map((item, i) => {\n  const d = drafts[i].json;\n  const r = item.json.output;\n  return { json: {\n    ...d,\n    review_score: r.score,\n    passed: d.hard_issues.length === 0 && r.pass === true,\n    issues: [...d.hard_issues, ...r.issues].join(' | '),\n    rewritten: false,\n  }};\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1056,
+        0
+      ],
+      "id": "8fbd350e-41f1-414d-83f5-a3cc63076282",
+      "name": "Decide"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "1775e011-56e9-4e39-9b2c-f8d505ce18da",
+              "leftValue": "={{ $json.passed }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1216,
+        0
+      ],
+      "id": "e70fab47-101c-4538-83fc-fcc784c36fa9",
+      "name": "Passed?"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash-lite",
+        "options": {
+          "temperature": 0.5
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        1424,
+        320
+      ],
+      "id": "1c9d4893-cc8c-43b9-84f9-c3892cfc94e9",
+      "name": "Google Gemini Chat Model2",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "fOvcobDsYNTsM5ii",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"subject\":   { \"type\": \"string\" },\n    \"headline\":  { \"type\": \"string\" },\n    \"body\":      { \"type\": \"string\" },\n    \"cta_label\": { \"type\": \"string\" }\n  },\n  \"required\": [\"subject\", \"headline\", \"body\", \"cta_label\"]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        1568,
+        320
+      ],
+      "id": "ebc04403-841e-4e31-bf75-e34255e803f7",
+      "name": "Structured Output Parser2"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a senior email copywriter. An editor rejected this email. Rewrite it so every problem below is fixed, keeping what already works.\n\nPROBLEMS TO FIX\n{{ $json.issues }}\n\nORIGINAL EMAIL\nSubject: {{ $json.subject }}\nHeadline: {{ $json.headline }}\nBody: {{ $json.body }}\nCTA: {{ $json.cta_label }}\n\nBRAND VOICE GUIDE\n{{ $('Campaign setup').first().json.brand_voice }}\n\nBRIEF\n- Topic: {{ $('Campaign setup').first().json.topic }}\n- Key points: {{ $('Campaign setup').first().json.key_points }}\n\nAUDIENCE\n- Segment: {{ $json.segment }}: {{ $json.segment_description }}\n- Language: {{ $json.language_name }}, form of address: {{ $json.address_form }}\n\nRULES\n- subject: max 55 characters, no emoji, no exclamation marks\n- headline: max 70 characters\n- body: 60-110 words, plain text, ONE paragraph, no line breaks, no greeting, no sign-off\n- cta_label: 2-4 words, starts with a verb\n- Never include URLs, prices or claims that are not in the brief",
+        "hasOutputParser": true,
+        "batching": {
+          "batchSize": 1,
+          "delayBetweenBatches": 10000
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        1424,
+        80
+      ],
+      "id": "557e1675-d7dc-4f40-af70-9d22ecdd04c8",
+      "name": "Rewrite email",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "const failed = $('Passed?').all(1);   // items from the \"false\" output\n\nreturn $input.all().map((item, i) => ({ json: {\n  ...failed[i].json,\n  ...item.json.output,\n  rewritten: true,\n  issues: 'Rewritten after: ' + failed[i].json.issues,\n}}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1712,
+        80
+      ],
+      "id": "bd2bff83-85d1-4665-813f-609c3204bc55",
+      "name": "Mark rewritten"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1856,
+        0
+      ],
+      "id": "7d390e90-32dd-452f-a064-470dfb7fe9a1",
+      "name": "All variants"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1VdDjWZXnimhrZ9_bbhef0LCOG8xI57jA-SrgOjcKGOE",
+          "mode": "list",
+          "cachedResultName": "n8n",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1VdDjWZXnimhrZ9_bbhef0LCOG8xI57jA-SrgOjcKGOE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1609582736,
+          "mode": "list",
+          "cachedResultName": "copy_variants",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1VdDjWZXnimhrZ9_bbhef0LCOG8xI57jA-SrgOjcKGOE/edit#gid=1609582736"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "campaign_id",
+              "displayName": "campaign_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "segment",
+              "displayName": "segment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "language",
+              "displayName": "language",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "subject",
+              "displayName": "subject",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "headline",
+              "displayName": "headline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "body",
+              "displayName": "body",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "cta_label",
+              "displayName": "cta_label",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "cta_url",
+              "displayName": "cta_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "review_score",
+              "displayName": "review_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "issues",
+              "displayName": "issues",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "rewritten",
+              "displayName": "rewritten",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2032,
+        0
+      ],
+      "id": "f7d06b03-9b92-4a12-80e9-3dffcf30dbaa",
+      "name": "Save variants",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "IKQ2URGev2DA2f2P",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $('All variants').all().map(i => i.json);\nconst c = $('Campaign setup').first().json;\nconst esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');\n\nconst tr = rows.map(r => `<tr>\n  <td>${r.segment}<br>${r.language}${r.rewritten ? '<br><b>REWRITTEN</b>' : ''}</td>\n  <td><b>${esc(r.subject)}</b><br><i>${esc(r.headline)}</i><br><br>${esc(r.body)}<br><br>[${esc(r.cta_label)}]</td>\n  <td>${r.review_score}/5<br>${esc(r.issues)}</td>\n</tr>`).join('');\n\nconst html = `<p><b>${esc(c.campaign_name)}</b>: ${rows.length} variants, ${rows.filter(r => r.rewritten).length} rewritten.</p>\n<table border=\"1\" cellpadding=\"6\" style=\"border-collapse:collapse;font-family:sans-serif;font-size:13px\">\n<tr><th>Audience</th><th>Copy</th><th>Review</th></tr>${tr}</table>`;\n\nreturn [{ json: { html } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2208,
+        0
+      ],
+      "id": "9dea0362-e87d-4ce9-8dbf-08dce79d6321",
+      "name": "Build approval email"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1VdDjWZXnimhrZ9_bbhef0LCOG8xI57jA-SrgOjcKGOE",
+          "mode": "list",
+          "cachedResultName": "n8n",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1VdDjWZXnimhrZ9_bbhef0LCOG8xI57jA-SrgOjcKGOE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 297391196,
+          "mode": "list",
+          "cachedResultName": "campaigns",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1VdDjWZXnimhrZ9_bbhef0LCOG8xI57jA-SrgOjcKGOE/edit#gid=297391196"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "campaign_id": "={{ $('Campaign setup').first().json.campaign_id }}",
+            "campaign_name": "={{ $('Campaign setup').first().json.campaign_name }}",
+            "target_stages": "={{ $('Campaign setup').first().json.target_stages.join(',') }}",
+            "cta_url": "={{ $('Campaign setup').first().json.cta_url }}",
+            "status": "={{ $json.data.approved ? 'approved' : 'rejected' }}",
+            "decided_at": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "campaign_id",
+              "displayName": "campaign_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "campaign_name",
+              "displayName": "campaign_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "target_stages",
+              "displayName": "target_stages",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "cta_url",
+              "displayName": "cta_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "decided_at",
+              "displayName": "decided_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2560,
+        0
+      ],
+      "id": "7aa30c36-0fd0-4967-817e-42cb5d4b5346",
+      "name": "Log campaign",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "IKQ2URGev2DA2f2P",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "sendAndWait",
+        "sendTo": "yourname@gmail.com",
+        "subject": "=Approve: {{ $('Campaign setup').first().json.campaign_name }}",
+        "message": "={{ $json.html }}",
+        "approvalOptions": {
+          "values": {
+            "approvalType": "double"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2384,
+        0
+      ],
+      "id": "eb17a4e1-300d-4af3-b6cf-dc81a13b4756",
+      "name": "Ask for approval",
+      "webhookId": "64a1e551-2590-4d91-b84d-f4829d6a0945",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "C3cShxPuMm2JmsHs",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "3857e332-3e02-4444-b04b-37cbb75011f3",
+              "leftValue": "={{ $('Ask for approval').item.json.data.approved }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2784,
+        0
+      ],
+      "id": "7ffdef42-dec0-45b0-a7a5-f5d7bd1f6fe4",
+      "name": "Approved?"
+    },
+    {
+      "parameters": {
+        "content": "## 1 · Content generation\nBrief in → on-brand copy for every segment × language → AI review → one rewrite if needed → human approval → send starts automatically.",
+        "height": 144,
+        "width": 400
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -480,
+        -576
+      ],
+      "id": "0469db6d-d01d-475c-ac80-d65700c37a89",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "## AI editor\nA second model checks tone, language, segment fit and invented claims. An email passes only if code AND the editor approve it.",
+        "height": 176,
+        "width": 624,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        688,
+        -240
+      ],
+      "id": "8583be6e-1833-4d27-978b-5042babe833c",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "content": "## One rewrite, capped\nFailed emails get exactly one rewrite and are flagged for the human approver. No loops, predictable cost.",
+        "height": 176,
+        "width": 448,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1360,
+        -240
+      ],
+      "id": "24d6f34c-a430-4160-98aa-8db5bcc47808",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "content": "## Store copy\nAll variants are saved to copy_variants, which workflow 2 reads from.",
+        "height": 176,
+        "width": 288,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1840,
+        -240
+      ],
+      "id": "bd320f86-88a3-45bb-8a2d-3eae7bf5d65f",
+      "name": "Sticky Note7"
+    },
+    {
+      "parameters": {
+        "content": "## Human approval\nOne email with every variant and two buttons. Nothing is sent without a yes, and the decision is logged.",
+        "height": 176,
+        "width": 496,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2176,
+        -240
+      ],
+      "id": "65737b15-b461-4f6b-b061-6bbe379d64a8",
+      "name": "Sticky Note8"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "dRaBEqIKJDhxAOzt",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/dRaBEqIKJDhxAOzt",
+          "cachedResultName": "2 – Audience & send"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        3056,
+        -16
+      ],
+      "id": "57398b05-859a-45f9-a852-00e6879bb425",
+      "name": "Start send"
+    },
+    {
+      "parameters": {
+        "content": "## Hand-off\nApprove starts workflow 2 directly. No manual step between approval and sending.",
+        "height": 176,
+        "width": 432,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2720,
+        -240
+      ],
+      "id": "4acaeeeb-0a66-4634-b04e-b366f7b98920",
+      "name": "Sticky Note9"
+    }
+  ],
+  "pinData": {
+    "On form submission": [
+      {
+        "json": {
+          "Goal": "Invite to an event",
+          "Topic": "christmas party for customers",
+          "Key points": "free alcol, free food, concert",
+          "CTA URL": "https://en.wikipedia.org/wiki/Christmas",
+          "Target lifecycle stages": [
+            "customer"
+          ],
+          "submittedAt": "2026-09-28T21:01:58.281+02:00",
+          "formMode": "test"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Write email": [
+      {
+        "json": {
+          "output": {
+            "subject": "Free drinks and a concert on us",
+            "headline": "Come to our customer Christmas party",
+            "body": "You have spent the entire year hitting pipeline targets, fixing failed campaigns, and explaining why lead attribution is complicated. You deserve a break from spreadsheets. We are hosting a Christmas party for our customers with free food, free alcohol, and a live concert. No product demos, no keynote presentations, and definitely no talk about workflow automation. Just an evening to eat, drink, and listen to some music before the holiday shutdown begins. Let us know if you can make it.",
+            "cta_label": "RSVP for party"
+          }
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "output": {
+            "subject": "Una pausa dai report",
+            "headline": "Birra, cibo e musica per chiudere l'anno insieme",
+            "body": "Tra un test di campagna e l'analisi dei lead, ogni tanto fermarsi ha senso. Quest'anno abbiamo organizzato una festa di Natale dedicata ai nostri clienti, senza slide di Q4 o presentazioni aziendali. Ci saranno cibo gratuito, alcol a volontà e un concerto dal vivo per staccare la spina per una sera. Ti va di venire a fare due chiacchiere fuori dall'ufficio e prenderci una pausa meritata?",
+            "cta_label": "Conferma la presenza"
+          }
+        },
+        "pairedItem": {
+          "item": 1
+        }
+      },
+      {
+        "json": {
+          "output": {
+            "subject": "End-of-year drinks, food and a live concert",
+            "headline": "Come to our customer Christmas party",
+            "body": "Most developer events involve warm soda and a slide deck nobody asked for, which is why we are doing the exact opposite for our customer Christmas party. You write code all year, so we rented a venue, hired a band for a live concert, and stocked the bar with free alcohol and free food. No product roadmap updates, no sponsored talks, just an evening to eat, drink, and listen to music with other people who spend their days debugging. It is on us, and you can show up whenever you finish deploying your final code of the week.",
+            "cta_label": "RSVP for the party"
+          }
+        },
+        "pairedItem": {
+          "item": 2
+        }
+      },
+      {
+        "json": {
+          "output": {
+            "subject": "Birra gratis, cibo e musica dal vivo",
+            "headline": "Vieni alla festa di Natale per i clienti di Northwind",
+            "body": "Quest'anno abbiamo deciso di fare una festa di Natale seria per chi usa la nostra piattaforma ogni giorno, senza presentoni commerciali o slide da digerire. Ci vediamo semplicemente per bere alcol gratis, mangiare qualcosa di decente e ascoltare un po' di musica dal vivo con il gruppo che abbiamo ingaggiato. Se scrivi codice tutto il giorno e vuoi staccare la spina con altre persone che fanno il tuo stesso lavoro, l'appuntamento è per il prossimo giovedì alle 18:30 nella nostra sede.",
+            "cta_label": "Conferma la presenza"
+          }
+        },
+        "pairedItem": {
+          "item": 3
+        }
+      },
+      {
+        "json": {
+          "output": {
+            "subject": "A year of data cleanup deserves a proper drink",
+            "headline": "Come to our customer Christmas party",
+            "body": "You spent the last twelve months keeping pipelines running and fixing broken data syncs without much applause. That gets tiring. We are hosting a Christmas party for our customers to mark the end of the year with actual human interaction instead of Slack threads. There will be free food, free alcohol, and a live concert. No product demos, no keynote presentations, and definitely no talk about workflow optimization. Just show up, grab a drink, and listen to some music with people who also spend their days untangling messes.",
+            "cta_label": "Claim your ticket"
+          }
+        },
+        "pairedItem": {
+          "item": 4
+        }
+      },
+      {
+        "json": {
+          "output": {
+            "subject": "Ferie, chiusure e birra gratis",
+            "headline": "Quest'anno niente bilanci di fine anno, solo birra e musica",
+            "body": "Tra fogli di calcolo da chiudere e processi da allineare, dicembre è sempre il mese più lungo per chi fa operations. Forse possiamo aiutarti a staccare la spina per una sera, almeno sulla carta. Abbiamo organizzato una festa di Natale dedicata ai nostri clienti, con cibo gratis, alcol gratis e un concerto dal vivo per dimenticare i ticket di supporto rimasti in sospeso. Se ti va di fare quattro chiacchiere senza parlare di dati sporchi o integrazioni fallite, ci trovi lì. Ti aspettiamo per un brindisi veloce prima della pausa.",
+            "cta_label": "Conferma la presenza"
+          }
+        },
+        "pairedItem": {
+          "item": 5
+        }
+      }
+    ]
+  },
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Campaign setup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Campaign setup": {
+      "main": [
+        [
+          {
+            "node": "Build variants",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build variants": {
+      "main": [
+        [
+          {
+            "node": "Write email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Write email",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Write email",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write email": {
+      "main": [
+        [
+          {
+            "node": "Combine + checks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Review email",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser1": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Review email",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Review email": {
+      "main": [
+        [
+          {
+            "node": "Decide",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decide": {
+      "main": [
+        [
+          {
+            "node": "Passed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Rewrite email",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser2": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Rewrite email",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Passed?": {
+      "main": [
+        [
+          {
+            "node": "All variants",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Rewrite email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rewrite email": {
+      "main": [
+        [
+          {
+            "node": "Mark rewritten",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark rewritten": {
+      "main": [
+        [
+          {
+            "node": "All variants",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "All variants": {
+      "main": [
+        [
+          {
+            "node": "Save variants",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save variants": {
+      "main": [
+        [
+          {
+            "node": "Build approval email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build approval email": {
+      "main": [
+        [
+          {
+            "node": "Ask for approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ask for approval": {
+      "main": [
+        [
+          {
+            "node": "Log campaign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine + checks": {
+      "main": [
+        [
+          {
+            "node": "Review email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log campaign": {
+      "main": [
+        [
+          {
+            "node": "Approved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approved?": {
+      "main": [
+        [
+          {
+            "node": "Start send",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "dd8b4db0-2300-414a-8385-9e3f76e4a005",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d2139c3f747a12fe63f569a9ffe9eb75ad49e1106d5f404d82c1f4b6baf23c91"
+  },
+  "nodeGroups": [],
+  "id": "z7XGSJiAOjL6cFlB",
+  "tags": []
+}

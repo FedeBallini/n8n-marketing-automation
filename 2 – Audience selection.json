@@ -1,0 +1,1116 @@
+{
+  "name": "2 – Audience & send",
+  "nodes": [
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1VdDjWZXnimhrZ9_bbhef0LCOG8xI57jA-SrgOjcKGOE",
+          "mode": "list",
+          "cachedResultName": "n8n",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1VdDjWZXnimhrZ9_bbhef0LCOG8xI57jA-SrgOjcKGOE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 297391196,
+          "mode": "list",
+          "cachedResultName": "campaigns",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1VdDjWZXnimhrZ9_bbhef0LCOG8xI57jA-SrgOjcKGOE/edit#gid=297391196"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        224,
+        0
+      ],
+      "id": "ea2f7af9-566f-4db7-96b6-4103a2927261",
+      "name": "Get campaigns",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "IKQ2URGev2DA2f2P",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "ac9e9065-8007-44e9-894f-087f361ef1d6",
+      "name": "Start"
+    },
+    {
+      "parameters": {
+        "jsCode": "const approved = $input.all().map(i => i.json).filter(c => c.status === 'approved');\nif (!approved.length) throw new Error('No approved campaign in the campaigns tab');\n\nconst c = approved[approved.length - 1];   // most recent approved campaign\nreturn [{ json: { ...c, target_stages: String(c.target_stages).split(',').map(s => s.trim()) } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        0
+      ],
+      "id": "23968f9e-d6bd-4d9c-82be-dc815dce742a",
+      "name": "Pick campaign"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1VdDjWZXnimhrZ9_bbhef0LCOG8xI57jA-SrgOjcKGOE",
+          "mode": "list",
+          "cachedResultName": "n8n",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1VdDjWZXnimhrZ9_bbhef0LCOG8xI57jA-SrgOjcKGOE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1060309489,
+          "mode": "list",
+          "cachedResultName": "test_contacts",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1VdDjWZXnimhrZ9_bbhef0LCOG8xI57jA-SrgOjcKGOE/edit#gid=1060309489"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        672,
+        0
+      ],
+      "id": "5b1369af-9f29-4fb0-ade7-a84e18f1e92e",
+      "name": "Get contacts",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "IKQ2URGev2DA2f2P",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1VdDjWZXnimhrZ9_bbhef0LCOG8xI57jA-SrgOjcKGOE",
+          "mode": "list",
+          "cachedResultName": "n8n",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1VdDjWZXnimhrZ9_bbhef0LCOG8xI57jA-SrgOjcKGOE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1609582736,
+          "mode": "list",
+          "cachedResultName": "copy_variants",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1VdDjWZXnimhrZ9_bbhef0LCOG8xI57jA-SrgOjcKGOE/edit#gid=1609582736"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        848,
+        0
+      ],
+      "id": "5f0dbba7-2577-4e3a-b67d-1b43508eb6f4",
+      "name": "Get copy",
+      "executeOnce": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "IKQ2URGev2DA2f2P",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ---------- Settings ----------\nconst FREQUENCY_CAP_DAYS = 7;\nconst HOLDOUT_PERCENT = 10;\nconst FALLBACK_LANGUAGE = 'en';\n\nconst campaign = $('Pick campaign').first().json;\nconst targets  = campaign.target_stages;                       // e.g. ['lead', 'mql']\nconst contacts = $('Get contacts').all().map(i => i.json);\nconst copyRows = $('Get copy').all().map(i => i.json)\n  .filter(r => String(r.campaign_id) === String(campaign.campaign_id));\n\n// ---------- Helpers ----------\nconst yes = v => v === true || String(v).trim().toUpperCase() === 'TRUE';\nconst now = new Date();\n\nfunction parseDate(v) {\n  if (v === undefined || v === null || v === '') return null;\n  if (typeof v === 'number') return new Date(Date.UTC(1899, 11, 30) + v * 86400000); // Sheets serial date\n  const s = String(v).trim();\n  let m = s.match(/^(\\d{4})-(\\d{2})-(\\d{2})/);                // 2026-08-14\n  if (m) return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));\n  m = s.match(/^(\\d{1,2})\\/(\\d{1,2})\\/(\\d{4})$/);              // 14/08/2026\n  if (m) return new Date(Date.UTC(+m[3], +m[2] - 1, +m[1]));\n  return null;\n}\nconst daysSince = d => Math.floor((now - d) / 86400000);\n\n// Same contact + same campaign always lands in the same group, so re-runs are consistent\nfunction bucket(s) {\n  let h = 0;\n  for (const ch of s) h = (h * 31 + ch.charCodeAt(0)) >>> 0;\n  return h % 100;\n}\n\n// Approved copy, looked up by \"segment|language\"\nconst copy = {};\nfor (const r of copyRows) copy[`${r.segment}|${r.language}`] = r;\n\n// ---------- Rules ----------\nconst seen = new Set();\nconst out = [];\n\nfor (const c of contacts) {\n  const email   = String(c.email || '').trim().toLowerCase();\n  const segment = String(c.segment || '').trim().toLowerCase();\n  const lang    = String(c.language || '').trim().toLowerCase();\n  const stage   = String(c.lifecycle_stage || '').trim().toLowerCase();\n  const last    = parseDate(c.last_emailed_at);\n\n  let reason = null;\n  if (!email.includes('@'))                                      reason = 'invalid email';\n  else if (seen.has(email))                                      reason = 'duplicate';\n  else if (yes(c.unsubscribed))                                  reason = 'unsubscribed';\n  else if (yes(c.bounced))                                       reason = 'bounced';\n  else if (!yes(c.opted_in))                                     reason = 'no opt-in';\n  else if (yes(c.is_customer) && !targets.includes('customer'))  reason = 'existing customer';\n  else if (!targets.includes(stage))                             reason = `stage '${stage}' not targeted`;\n  else if (last && daysSince(last) < FREQUENCY_CAP_DAYS)         reason = `emailed ${daysSince(last)} days ago (${FREQUENCY_CAP_DAYS}-day cap)`;\n  seen.add(email);\n\n  // Language: contact's own language if copy exists, otherwise fallback\n  let sendLang = lang;\n  let variant = copy[`${segment}|${lang}`];\n  if (!reason && !variant) { sendLang = FALLBACK_LANGUAGE; variant = copy[`${segment}|${FALLBACK_LANGUAGE}`]; }\n  if (!reason && !variant) reason = 'no approved copy for this segment';\n\n  let decision = reason ? 'excluded' : 'send';\n  if (decision === 'send' && bucket(email + campaign.campaign_id) < HOLDOUT_PERCENT) {\n    decision = 'holdout';\n    reason = `control group (${HOLDOUT_PERCENT}%)`;\n  }\n\n  out.push({ json: {\n    campaign_id: campaign.campaign_id,\n    email,\n    first_name: c.first_name,\n    segment,\n    language: lang || '(none)',\n    send_language: decision === 'excluded' ? '' : sendLang,\n    decision,\n    reason: reason || '',\n    logged_at: now.toISOString(),\n    row_number: c.row_number,\n    subject: variant?.subject,\n    headline: variant?.headline,\n    body: variant?.body,\n    cta_label: variant?.cta_label,\n    cta_url: variant?.cta_url,\n  }});\n}\n\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1072,
+        0
+      ],
+      "id": "29016f38-dd2c-46d0-8f22-6f89958c03d5",
+      "name": "Select audience"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.decision }}",
+                    "rightValue": "send",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "7291540e-e24f-4d32-9725-fb693585bd4b"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "send"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "b24bb902-5f22-4c54-ba61-1c33688f9efe",
+                    "leftValue": "={{ $json.decision }}",
+                    "rightValue": "holdout",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "holdout"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "ef20da61-c8ed-46bb-abbc-b058ebae4eaa",
+                    "leftValue": "={{ $json.decision }}",
+                    "rightValue": "excluded",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "excluded"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        1504,
+        -16
+      ],
+      "id": "ebef6957-06a9-4c46-a6aa-479d20e3bf17",
+      "name": "Route"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1VdDjWZXnimhrZ9_bbhef0LCOG8xI57jA-SrgOjcKGOE",
+          "mode": "list",
+          "cachedResultName": "n8n",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1VdDjWZXnimhrZ9_bbhef0LCOG8xI57jA-SrgOjcKGOE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 280325579,
+          "mode": "list",
+          "cachedResultName": "audience_selection",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1VdDjWZXnimhrZ9_bbhef0LCOG8xI57jA-SrgOjcKGOE/edit#gid=280325579"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "campaign_id",
+              "displayName": "campaign_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "first_name",
+              "displayName": "first_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "segment",
+              "displayName": "segment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "language",
+              "displayName": "language",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "send_language",
+              "displayName": "send_language",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "decision",
+              "displayName": "decision",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "reason",
+              "displayName": "reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "logged_at",
+              "displayName": "logged_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1360,
+        192
+      ],
+      "id": "abedf436-b65b-4882-b8a8-3ce7dba5a09a",
+      "name": "Log decisions",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "IKQ2URGev2DA2f2P",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all().map(i => i.json);\nconst count = d => rows.filter(r => r.decision === d).length;\n\nconst excludedByReason = {};\nfor (const r of rows.filter(r => r.decision === 'excluded')) {\n  const key = r.reason.startsWith('emailed') ? 'frequency cap' : r.reason;\n  excludedByReason[key] = (excludedByReason[key] || 0) + 1;\n}\n\nreturn [{ json: {\n  campaign_id: rows[0]?.campaign_id,\n  total: rows.length,\n  send: count('send'),\n  holdout: count('holdout'),\n  excluded: count('excluded'),\n  excluded_by_reason: excludedByReason,\n}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1360,
+        352
+      ],
+      "id": "9ea5f143-4b21-41e3-9a31-8d0d44268a25",
+      "name": "Summary"
+    },
+    {
+      "parameters": {
+        "method": "DELETE",
+        "url": "=https://connect.mailerlite.com/api/subscribers/{{ $json.data.id }}/groups/199871754934420522",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "mailerLiteApi",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2064,
+        -32
+      ],
+      "id": "ff7315db-e614-4ea7-bf83-95d90583114a",
+      "name": "Remove from queue",
+      "credentials": {
+        "mailerLiteApi": {
+          "id": "aGBJ9EYfDFgP7mlC",
+          "name": "Mailer Lite account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://connect.mailerlite.com/api/subscribers/{{ $('Upsert subscriber').item.json.data.id }}/groups/199871754934420522",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "mailerLiteApi",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2288,
+        -32
+      ],
+      "id": "07d8a153-bc0f-455d-a439-6b6a0c43b76e",
+      "name": "Add to queue",
+      "credentials": {
+        "mailerLiteApi": {
+          "id": "aGBJ9EYfDFgP7mlC",
+          "name": "Mailer Lite account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1VdDjWZXnimhrZ9_bbhef0LCOG8xI57jA-SrgOjcKGOE",
+          "mode": "list",
+          "cachedResultName": "n8n",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1VdDjWZXnimhrZ9_bbhef0LCOG8xI57jA-SrgOjcKGOE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1060309489,
+          "mode": "list",
+          "cachedResultName": "test_contacts",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1VdDjWZXnimhrZ9_bbhef0LCOG8xI57jA-SrgOjcKGOE/edit#gid=1060309489"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": "={{ $('Select audience').item.json.row_number }}",
+            "last_emailed_at": "={{ $now.toFormat('yyyy-MM-dd') }}",
+            "status_log": "=sent {{ $('Pick campaign').first().json.campaign_id }}"
+          },
+          "matchingColumns": [
+            "row_number"
+          ],
+          "schema": [
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "first_name",
+              "displayName": "first_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "language",
+              "displayName": "language",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "country",
+              "displayName": "country",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "segment",
+              "displayName": "segment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "lifecycle_stage",
+              "displayName": "lifecycle_stage",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "opted_in",
+              "displayName": "opted_in",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "unsubscribed",
+              "displayName": "unsubscribed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "bounced",
+              "displayName": "bounced",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "last_emailed_at",
+              "displayName": "last_emailed_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "is_customer",
+              "displayName": "is_customer",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status_log",
+              "displayName": "status_log",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "test_note",
+              "displayName": "test_note",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2512,
+        -32
+      ],
+      "id": "b3cb380a-0228-4545-a253-5fd5ef8667e1",
+      "name": "Mark contact emailed",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "IKQ2URGev2DA2f2P",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://connect.mailerlite.com/api/subscribers",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "mailerLiteApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  email: $json.email,\n  fields: {\n    name: $json.first_name,\n    ai_subject: $json.subject,\n    ai_headline: $json.headline,\n    ai_body: $json.body,\n    ai_cta_label: $json.cta_label,\n    ai_cta_url: $json.cta_url\n  }\n}) }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 5
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1840,
+        -32
+      ],
+      "id": "04875434-d00f-4a6d-8fe1-ae4167b5a6ff",
+      "name": "Upsert subscriber",
+      "credentials": {
+        "mailerLiteApi": {
+          "id": "aGBJ9EYfDFgP7mlC",
+          "name": "Mailer Lite account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $('Select audience').all().map(i => i.json);\nconst c = $('Pick campaign').first().json;\nconst count = d => rows.filter(r => r.decision === d).length;\n\nconst reasons = {};\nfor (const r of rows.filter(r => r.decision === 'excluded')) {\n  const key = r.reason.startsWith('emailed') ? 'frequency cap' : r.reason;\n  reasons[key] = (reasons[key] || 0) + 1;\n}\nconst reasonLines = Object.entries(reasons).map(([k, v]) => `${k}: ${v}`).join('<br>');\n\nconst html = `<h3>${c.campaign_name}</h3>\n<p>Sent: <b>${count('send')}</b> · Holdout (control group): <b>${count('holdout')}</b> · Excluded: <b>${count('excluded')}</b></p>\n<p><b>Excluded by reason</b><br>${reasonLines}</p>\n<p>Full audit trail: audience_log tab.</p>`;\n\nreturn [{ json: { subject: `Sent: ${c.campaign_name}`, html } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2960,
+        -32
+      ],
+      "id": "5620cd3b-f486-4af4-89f8-7b3906920193",
+      "name": "Build report"
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        160
+      ],
+      "id": "77c402e7-3f8a-4d97-98a3-6d0459c03ef0",
+      "name": "From approval"
+    },
+    {
+      "parameters": {
+        "content": "## 2 · Audience & send\nPicks the latest approved campaign, decides who gets it (with a reason for everyone), sends through MailerLite and reports back.",
+        "width": 352
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -48,
+        -688
+      ],
+      "id": "59930674-8b6f-4740-b85b-6b4ec0092931",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Which campaign\nTwo triggers, one path: manual for testing, or called by workflow 1 on approval. Only \"approved\" campaigns are picked, so a sent campaign can't be sent twice.",
+        "height": 176,
+        "width": 560,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -256
+      ],
+      "id": "12d914f0-6e57-41b2-8bf0-a178f045d0b1",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Data\nContacts and approved copy from Sheets. Get copy runs once (Execute Once), not once per contact.",
+        "height": 176,
+        "width": 320,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        608,
+        -256
+      ],
+      "id": "9e1949db-6786-4f80-8a95-26753965b13c",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## Audience rules\nPriority-ordered rules give one reason per contact: duplicate, unsubscribed, bounced, no opt-in, customer, stage, 7-day cap. Language falls back to English when no copy exists. 10% deterministic holdout.",
+        "height": 176,
+        "width": 288,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1008,
+        -256
+      ],
+      "id": "dbad168e-0bad-48ba-a180-fbc9df22efce",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## Route & audit\nsend / holdout / excluded. Every decision is logged to audience_log with its reason.",
+        "height": 176,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1440,
+        -256
+      ],
+      "id": "fdbb66f3-e8d3-4ceb-b1cd-d4c6e9da9f57",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "## Send via MailerLite\nThe personalised copy goes into custom fields. Remove then re-add to the group, because MailerLite only triggers on a fresh join. Unsubscribed people are never resubscribed.",
+        "height": 176,
+        "width": 560,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1824,
+        -256
+      ],
+      "id": "240f86fa-c540-4775-861b-e99679434dd0",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "content": "## Write back\nUpdates last_emailed_at (feeds the frequency cap) and marks the campaign \"sent\" (prevents double sends).",
+        "height": 176,
+        "width": 352,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2496,
+        -256
+      ],
+      "id": "f48d5455-0c79-49b9-b6a4-1aed4f20f6f2",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1VdDjWZXnimhrZ9_bbhef0LCOG8xI57jA-SrgOjcKGOE",
+          "mode": "list",
+          "cachedResultName": "n8n",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1VdDjWZXnimhrZ9_bbhef0LCOG8xI57jA-SrgOjcKGOE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 297391196,
+          "mode": "list",
+          "cachedResultName": "campaigns",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1VdDjWZXnimhrZ9_bbhef0LCOG8xI57jA-SrgOjcKGOE/edit#gid=297391196"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "campaign_id": "={{ $('Pick campaign').first().json.campaign_id }}",
+            "status": "sent",
+            "sent_at": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [
+            "campaign_id"
+          ],
+          "schema": [
+            {
+              "id": "campaign_id",
+              "displayName": "campaign_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "campaign_name",
+              "displayName": "campaign_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "target_stages",
+              "displayName": "target_stages",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "cta_url",
+              "displayName": "cta_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "decided_at",
+              "displayName": "decided_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "sent_at",
+              "displayName": "sent_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2736,
+        -32
+      ],
+      "id": "dcfafd94-e5c8-462f-8661-b82d5973237c",
+      "name": "Mark campaign sent",
+      "executeOnce": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "IKQ2URGev2DA2f2P",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "yourname@gmail.com",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.html }}",
+        "options": {
+          "appendAttribution": true
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        3184,
+        -32
+      ],
+      "id": "374b882f-50fe-4771-bc02-d01ae54d7631",
+      "name": "Send report",
+      "webhookId": "190c69a7-cce5-4061-a199-d1d85b82f557",
+      "executeOnce": true,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "C3cShxPuMm2JmsHs",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Report\nSummary email after each send: sent, holdout, excluded by reason.",
+        "height": 176,
+        "width": 352,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2928,
+        -256
+      ],
+      "id": "08dfbb5c-5423-4b82-9c15-56e5a457d0ed",
+      "name": "Sticky Note7"
+    }
+  ],
+  "pinData": {
+    "Start": [
+      {
+        "json": {},
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Get campaigns": {
+      "main": [
+        [
+          {
+            "node": "Pick campaign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Get campaigns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pick campaign": {
+      "main": [
+        [
+          {
+            "node": "Get contacts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get contacts": {
+      "main": [
+        [
+          {
+            "node": "Get copy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get copy": {
+      "main": [
+        [
+          {
+            "node": "Select audience",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select audience": {
+      "main": [
+        [
+          {
+            "node": "Route",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log decisions",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route": {
+      "main": [
+        [
+          {
+            "node": "Upsert subscriber",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remove from queue": {
+      "main": [
+        [
+          {
+            "node": "Add to queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add to queue": {
+      "main": [
+        [
+          {
+            "node": "Mark contact emailed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark contact emailed": {
+      "main": [
+        [
+          {
+            "node": "Mark campaign sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert subscriber": {
+      "main": [
+        [
+          {
+            "node": "Remove from queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build report": {
+      "main": [
+        [
+          {
+            "node": "Send report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "From approval": {
+      "main": [
+        [
+          {
+            "node": "Get campaigns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark campaign sent": {
+      "main": [
+        [
+          {
+            "node": "Build report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "ddd1e303-0346-4ab9-abe2-f6b11446e7c8",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d2139c3f747a12fe63f569a9ffe9eb75ad49e1106d5f404d82c1f4b6baf23c91"
+  },
+  "nodeGroups": [],
+  "id": "dRaBEqIKJDhxAOzt",
+  "tags": []
+}
